@@ -6,10 +6,12 @@ A Python-based workflow integrating Google Drive, Sheets, and the Gemini API to 
 
 ## 🚀 Features
 
+- **FastAPI Web Dashboard:** Serve a local web interface featuring interactive statistics (Total, Completed, Pending rows) and a details table.
+- **Live Streaming Logs:** Real-time console progress streamed directly to a simulated browser terminal using Server-Sent Events (SSE).
 - **Metadata Sync:** Reads pending interviews and Google Drive video links directly from a Google Sheet.
 - **Automated Downloads:** Uses a Google Service Account to download large video files securely from Google Drive.
-- **Audio Extraction:** Extracts high-quality audio tracks using FFmpeg (`imageio-ffmpeg`) programmatically.
-- **AI Analysis:** Leverages Gemini (`gemini-1.5-flash`) with structured JSON schema outputs via Pydantic to extract interviewer questions and matching interviewee answers.
+- **Audio Extraction:** Programmatically extracts high-quality audio tracks using FFmpeg (`imageio-ffmpeg`).
+- **AI Analysis & Speaker Diarization:** Natively leverages Gemini (`gemini-1.5-flash`) to perform speaker diarization and context mapping, automatically separating and matching the interviewer's questions with the interviewee's answers under a structured Pydantic JSON schema.
 - **Result Export:** Automatically creates and appends questions and answers to dedicated sheets (`Questions` and `Answers`).
 - **State Persistence:** Updates row status to `Completed` in the main sheet and cleans up temporary video files after processing.
 
@@ -18,6 +20,7 @@ A Python-based workflow integrating Google Drive, Sheets, and the Gemini API to 
 ## 🛠️ Tech Stack
 
 - **Language:** Python 3.10+
+- **Web Framework:** FastAPI, Uvicorn, Jinja2 Templates
 - **AI/LLM:** Google GenAI SDK (`google-genai`), Pydantic
 - **Media Processing:** FFmpeg (`imageio-ffmpeg`)
 - **Cloud Integration:** Google Sheets API, Google Drive API
@@ -54,7 +57,7 @@ Clone the repository, create a virtual environment, and install dependencies:
 ```bash
 # Clone the repository
 git clone https://github.com/Samyak0204/interview-QA-extractor.git
-cd q-and-a
+cd interview-QA-extractor
 
 # Create a virtual environment
 python -m venv venv
@@ -98,12 +101,17 @@ The pipeline will automatically create two new worksheets in the spreadsheet if 
 
 ---
 
-## 🏃 Running the Pipeline
+## 🏃 Running the Application
 
-Execute the main script to process pending rows:
-```bash
-python main.py
-```
+1. Start the FastAPI development server:
+   ```bash
+   uvicorn main:app --reload
+   ```
+2. Open your web browser and go to:
+   ```
+   http://127.0.0.1:8000
+   ```
+3. Click the **"Process Pending Interviews"** button to start the pipeline and watch live execution logs stream to the terminal panel.
 
 ---
 
@@ -111,8 +119,9 @@ python main.py
 
 Planned enhancements to extend this pipeline's capabilities:
 
-- **FastAPI Backend Server & REST API:** Migrate the execution script to a persistent web service to trigger runs via endpoints.
-- **Web UI & Dashboard:** Build an interactive user interface to monitor processing logs, preview audio tracks, and manually review/edit extracted Q&A pairs before exporting.
+- **Containerization & Cloud Deployment:** Package the application into a Docker container to ensure system libraries (like FFmpeg) are correctly configured across cloud hosting environments (AWS, Render, etc.).
+- **Error Handling & API Rate Limiting:** Implement retry logic using the `tenacity` library with exponential backoff to handle transient API rate limits (HTTP 429) and server errors (HTTP 500) gracefully.
+- **Progress Bars:** Stream Google Drive download/processing status percentages to render visual progress bars in the browser dashboard.
+- **Row Cancellation:** Add a "Cancel Run" button in the dashboard to safely terminate a running pipeline execution.
 - **Google OAuth2 Login:** Transition from a single Google Service Account credentials key to OAuth2 login, allowing users to authenticate individually and grant the pipeline permissions to their own Drive and Sheets.
-- **Speaker Diarization:** Implement speaker separation to enhance accuracy when tagging who asked a question and who answered it.
 

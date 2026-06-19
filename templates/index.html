@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AI-Powered Interview Q&A Extractor Dashboard">
+    <title>Interview Q&A Extractor</title>
+    <!-- Premium Font from Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Link to our separate stylesheet -->
+    <link href="/static/style.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        
+        <!-- HEADER PANEL -->
+        <header class="panel">
+            <div>
+                <h1>Interview Q&A Extractor</h1>
+                <p style="color: var(--text-muted); margin-top: 0.5rem;">Pipeline Dashboard powered by Google Sheets & Gemini 1.5 Flash</p>
+            </div>
+            <div>
+                <button id="processBtn" class="btn" onclick="startProcessing()">
+                    🚀 Process Pending Interviews
+                </button>
+            </div>
+        </header>
+
+        <!-- STATS & METRICS -->
+        <section class="metrics-grid">
+            <div class="panel metric-card">
+                <h3>Total Interviews</h3>
+                <div id="totalCount" class="metric-number">0</div>
+            </div>
+            <div class="panel metric-card">
+                <h3>Completed</h3>
+                <div id="completedCount" class="metric-number" style="color: var(--green-badge);">0</div>
+            </div>
+            <div class="panel metric-card">
+                <h3>Pending Processing</h3>
+                <div id="pendingCount" class="metric-number" style="color: var(--orange-badge);">0</div>
+            </div>
+        </section>
+
+        <!-- DATA TABLE PANEL -->
+        <section class="panel">
+            <h2>Spreadsheet Ingestion Rows</h2>
+            <div class="table-container">
+                <table id="interviewTable">
+                    <thead>
+                        <tr>
+                            <th>Row #</th>
+                            <th>Interviewer ID</th>
+                            <th>Interviewee ID</th>
+                            <th>Drive Video Link</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: var(--text-muted);">Loading spreadsheet metadata...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- TERMINAL LOG PANEL -->
+        <section class="panel">
+            <h2>Real-time Pipeline Terminal Output</h2>
+            <div class="terminal-container">
+                <div class="terminal-header">
+                    <span class="dot dot-red"></span>
+                    <span class="dot dot-yellow"></span>
+                    <span class="dot dot-green"></span>
+                    <span class="terminal-title">pipeline_logs.sh</span>
+                </div>
+                <div id="terminalScreen" class="terminal-screen">SYSTEM READY: Click "Process Pending Interviews" to start the extraction pipeline.</div>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- UI JAVASCRIPT LOGIC -->
+    <script>
+        // Fetch rows from sheets and draw the UI elements
+        async function loadInterviews() {
+            try {
+                const response = await fetch('/api/interviews');
+                const result = await response.json();
+                
+                if (!result.success) {
+                    showError(result.error);
+                    return;
+                }
+                
+                const data = result.data;
+                const tbody = document.getElementById('tableBody');
+                
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No rows found in the sheet.</td></tr>';
+                    return;
+                }
+                
+                let html = '';
+                let completed = 0;
+                let pending = 0;
+                
+                data.forEach(row => {
+                    const statusStr = (row.Status || '').trim().toLowerCase();
+                    const isCompleted = statusStr === 'completed';
+                    
+                    if (isCompleted) {
+                        completed++;
+                    } else {
+                        pending++;
+                    }
+                    
+                    const badgeClass = isCompleted ? 'badge-completed' : 'badge-pending';
+                    const badgeLabel = isCompleted ? 'Completed' : 'Pending';
+                    
+                    html += `
+                        <tr>
+                            <td><strong>${row.row_num}</strong></td>
+                            <td>${row.Interviewer_ID || 'N/A'}</td>
+                            <td>${row.Interviewee_ID || 'N/A'}</td>
+                            <td>
+                                <a class="drive-link" href="${row.Link}" target="_blank" rel="noopener">
+                                    Open Video ↗
+                                </a>
+                            </td>
+                            <td>
+                                <span class="badge ${badgeClass}">${badgeLabel}</span>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                tbody.innerHTML = html;
+                document.getElementById('totalCount').innerText = data.length;
+                document.getElementById('completedCount').innerText = completed;
+                document.getElementById('pendingCount').innerText = pending;
+                
+                // Disable button if nothing is pending
+                document.getElementById('processBtn').disabled = (pending === 0);
+                
+            } catch (err) {
+                showError('Failed to connect to backend server: ' + err.message);
+            }
+        }
+
+        function showError(msg) {
+            document.getElementById('tableBody').innerHTML = `
+                <tr>
+                    <td colspan="5" style="text-align: center; color: #ef4444; font-weight: 600;">
+                        ⚠️ ${msg}
+                    </td>
+                </tr>
+            `;
+        }
+
+        // SSE connection triggered by button
+        function startProcessing() {
+            const btn = document.getElementById('processBtn');
+            const terminal = document.getElementById('terminalScreen');
+            
+            btn.disabled = true;
+            terminal.innerHTML = 'Establishing connection to server...\n';
+            terminal.scrollTop = terminal.scrollHeight;
+            
+            // Connect to server stream endpoint
+            const eventSource = new EventSource('/api/process/stream');
+            
+            eventSource.onmessage = function(event) {
+                // Clear initial line on first message
+                if (terminal.innerHTML.startsWith('SYSTEM READY') || terminal.innerHTML.startsWith('Establishing connection')) {
+                    terminal.innerHTML = '';
+                }
+                
+                // Append log and scroll
+                terminal.innerHTML += event.data + '\n';
+                terminal.scrollTop = terminal.scrollHeight;
+            };
+            
+            eventSource.onerror = function(err) {
+                eventSource.close();
+                btn.disabled = false;
+                terminal.innerHTML += '\n[Connection Closed] Process terminated.';
+                terminal.scrollTop = terminal.scrollHeight;
+                
+                // Reload sheets to refresh table
+                loadInterviews();
+            };
+        }
+
+        // Run on page load
+        window.addEventListener('DOMContentLoaded', loadInterviews);
+    </script>
+</body>
+</html>
