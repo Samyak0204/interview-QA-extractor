@@ -104,3 +104,15 @@ Execute the main script to process pending rows:
 ```bash
 python main.py
 ```
+
+---
+
+## 🔮 Future Work & Roadmap
+
+Planned enhancements to extend this pipeline's capabilities:
+
+- **FastAPI Backend Server & REST API:** Migrate the execution script to a persistent web service to trigger runs via endpoints.
+- **Web UI & Dashboard:** Build an interactive user interface to monitor processing logs, preview audio tracks, and manually review/edit extracted Q&A pairs before exporting.
+- **Google OAuth2 Login:** Transition from a single Google Service Account credentials key to OAuth2 login, allowing users to authenticate individually and grant the pipeline permissions to their own Drive and Sheets.
+- **Speaker Diarization:** Implement speaker separation to enhance accuracy when tagging who asked a question and who answered it.
+
