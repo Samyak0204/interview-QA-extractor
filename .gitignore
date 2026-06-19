@@ -1,0 +1,23 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.env
+venv/
+ENV/
+env/
+
+# Google Cloud credentials
+service_account.json
+
+# Audio and Video assets
+videos/
+audios/
+*.mp4
+*.mp3
+
+# IDE settings
+.vscode/
+.idea/
